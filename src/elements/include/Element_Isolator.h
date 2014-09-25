@@ -45,13 +45,21 @@ namespace MFM
     typedef typename CC::PARAM_CONFIG P;
     enum { R = P::EVENT_WINDOW_RADIUS };
 
+  private:
+    ElementParameterS32<CC> m_cellRadius;
+    ElementParameterS32<CC> m_deathProb;
+
   public:
     static Element_Isolator THE_INSTANCE;
     static const u32 TYPE() {
       return THE_INSTANCE.GetType();
     }
 
-    Element_Isolator() : Element<CC>(MFM_UUID_FOR("Isolator", ISOLATOR_VERSION))
+    Element_Isolator() : Element<CC>(MFM_UUID_FOR("Isolator", ISOLATOR_VERSION)), 
+			 m_cellRadius(this, "cellRadius", "Cell Radius", "Isolator cell radius spacing", 
+                                      1, R-1, R, 1),
+                         m_deathProb(this, "deathProb", "Odds of dying", "Probability of dying for an Isolator",
+                                     1, 100, 1000, 1) 
     {
       Element<CC>::SetAtomicSymbol("Is");
       Element<CC>::SetName("Isolator");
@@ -94,7 +102,7 @@ namespace MFM
        T self = window.GetCenterAtom();
        const MDist<R> md = MDist<R>::get();
 
-       // Look in all but furthest locations of the Event Window (does the "R-1" do that?)
+       // Look in all but furthest locations of the Event Window (R-1)
        for (u32 idx = md.GetFirstIndex(1); idx <= md.GetLastIndex(R-1); ++idx)
        {
 	  // Get site, skip if invalid, get type of Element at site
@@ -114,13 +122,28 @@ namespace MFM
              type != Element_Empty<CC>::THE_INSTANCE.GetType())
           {
 	    //Copy itself to any Empty locations at the edges of the Event Window 
-	    for (u32 i = md.GetFirstIndex(R); i <= md.GetLastIndex(R); ++i)
-	      {  const SPoint edgeSite = md.GetPoint(i);
-		 type = window.GetRelativeAtom(edgeSite).GetType();
-                 if (type == Element_Empty<CC>::THE_INSTANCE.GetType())
-		 {  window.SetRelativeAtom(edgeSite, self);  // copy itself to edge location
+            u32 range =  (u32) m_cellRadius.GetValue();
+	    for (u32 i = md.GetFirstIndex(1); i <= md.GetLastIndex(R); ++i)
+	      {  const SPoint baseSite = md.GetPoint(i);
+                 const SPoint donutSite = baseSite + site;
+		 if (donutSite.GetManhattanLength() > R)
+                 {
+                    continue;
+                 }
+		 type = window.GetRelativeAtom(donutSite).GetType();
+
+                 if (baseSite.GetManhattanLength() < range && type == Element_Isolator<CC>::THE_INSTANCE.GetType())
+		 { window.SetRelativeAtom(donutSite, Element_Empty<CC>::THE_INSTANCE.GetDefaultAtom());
 		 }
+                 else 
+		 { if (type == Element_Empty<CC>::THE_INSTANCE.GetType())
+		   {  window.SetRelativeAtom(donutSite, self);  // copy itself to donut location
+		   }
+		 }
+
 	      }
+	    
+
             /*******************************************************************/
 
             // Found an Element and surrounded it, break out
@@ -128,12 +151,27 @@ namespace MFM
           }
        }
 
-       // No Element was found to be surrounded, so do a random walk
+       // No Element was found to be surrounded, roll the dice and die if unlucky
+       if (window.GetRandom().OneIn(m_deathProb.GetValue()))
+       {  window.SetCenterAtom(Element_Empty<CC>::THE_INSTANCE.GetDefaultAtom());
+       }
+
+       // Didn't die, random walk
        randomWalk(window);
        /***********************************************************/
     }
 
   private:
+
+    s32 manhattanDist(const SPoint& p1, const SPoint& p2)
+    {  s32 x1 = p1.GetX();
+       s32 x2 = p2.GetX();
+
+       s32 y1 = p1.GetY();
+       s32 y2 = p2.GetY();
+
+       return ABS(y1-y2) + ABS(x2-x1);
+    }
 
     // Does a random walk given an EventWindow.  
     // Taken straight from AbstractElement_Wanderer.h
