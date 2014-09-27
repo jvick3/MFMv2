@@ -35,7 +35,7 @@
 namespace MFM
 {
 
-#define ISOLATOR_VERSION 2
+#define ISOLATOR_VERSION 3
 
   template <class CC>
   class Element_Isolator : public Element<CC>
