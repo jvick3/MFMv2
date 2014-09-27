@@ -35,7 +35,7 @@
 namespace MFM
 {
 
-#define ISOLATOR_VERSION 1
+#define ISOLATOR_VERSION 2
 
   template <class CC>
   class Element_Isolator : public Element<CC>
@@ -101,9 +101,10 @@ namespace MFM
     {  
        T self = window.GetCenterAtom();
        const MDist<R> md = MDist<R>::get();
+       bool element_found = false;
 
-       // Look in all but furthest locations of the Event Window (R-1)
-       for (u32 idx = md.GetFirstIndex(1); idx <= md.GetLastIndex(R-1); ++idx)
+       // Look in every site of the Event Window 
+       for (u32 idx = md.GetFirstIndex(1); idx <= md.GetLastIndex(R); ++idx)
        {
 	  // Get site, skip if invalid, get type of Element at site
           const SPoint site = md.GetPoint(idx);
@@ -121,7 +122,10 @@ namespace MFM
                              && 
              type != Element_Empty<CC>::THE_INSTANCE.GetType())
           {
-	    //Copy itself to any Empty locations at the edges of the Event Window 
+            element_found = true;
+
+            // Look at all sites within R of the found Element.  Any sites less than range (Cell Radius) away
+            // should be removed of Isolators, and sites >= range in manhattan distance should become Isolator
             u32 range =  (u32) m_cellRadius.GetValue();
 	    for (u32 i = md.GetFirstIndex(1); i <= md.GetLastIndex(R); ++i)
 	      {  const SPoint baseSite = md.GetPoint(i);
@@ -132,8 +136,10 @@ namespace MFM
                  }
 		 type = window.GetRelativeAtom(donutSite).GetType();
 
-                 if (baseSite.GetManhattanLength() < range && type == Element_Isolator<CC>::THE_INSTANCE.GetType())
-		 { window.SetRelativeAtom(donutSite, Element_Empty<CC>::THE_INSTANCE.GetDefaultAtom());
+                 if (baseSite.GetManhattanLength() < range)
+		 { if (type == Element_Isolator<CC>::THE_INSTANCE.GetType())
+		   {  window.SetRelativeAtom(donutSite, Element_Empty<CC>::THE_INSTANCE.GetDefaultAtom());
+		   }
 		 }
                  else 
 		 { if (type == Element_Empty<CC>::THE_INSTANCE.GetType())
@@ -142,23 +148,26 @@ namespace MFM
 		 }
 
 	      }
-	    
-
             /*******************************************************************/
 
-            // Found an Element and surrounded it, break out
-            return; 
+            // Do not break out, keep looking for more Elements: ensure radius is maintained for all!
+            // return; 
           }
        }
-
-       // No Element was found to be surrounded, roll the dice and die if unlucky
-       if (window.GetRandom().OneIn(m_deathProb.GetValue()))
-       {  window.SetCenterAtom(Element_Empty<CC>::THE_INSTANCE.GetDefaultAtom());
+       
+       // haven't seen anything, die or do random walk
+       if (! element_found)   
+       {
+          // Roll the dice and die if unlucky
+          if (window.GetRandom().OneIn(m_deathProb.GetValue()))
+          {  
+             window.SetCenterAtom(Element_Empty<CC>::THE_INSTANCE.GetDefaultAtom());
+          }
+          else      // Didn't die, random walk
+          {  randomWalk(window);
+          }
        }
-
-       // Didn't die, random walk
-       randomWalk(window);
-       /***********************************************************/
+       /**********************************************/
     }
 
   private:
