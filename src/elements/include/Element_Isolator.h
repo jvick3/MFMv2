@@ -1,5 +1,4 @@
 /*                                              -*- mode:C++ -*-
-  Element_Wall.h Basic immovable element
   Copyright (C) 2014 The Regents of the University of New Mexico.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
@@ -37,7 +36,7 @@
 namespace MFM
 {
 
-#define ISOLATOR_VERSION 4
+#define ISOLATOR_VERSION 5
 
   template <class CC>
   class Element_Isolator : public Element<CC>
@@ -49,7 +48,6 @@ namespace MFM
 
   private:
     ElementParameterS32<CC> m_cellRadius;
-    ElementParameterS32<CC> m_deathProb;
 
     // Does a random walk given an EventWindow.  
     // Taken straight from AbstractElement_Wanderer.h
@@ -94,7 +92,7 @@ namespace MFM
        s32 nearest_dist = 0;
 
        for (u32 i = md.GetFirstIndex(1); i <= md.GetLastIndex(R); ++i)
-       {  const SPoint baseSite = md.GetPoint(i);
+       {  const SPoint baseSite = md.GetPoint(i); 
           const SPoint donutSite = baseSite + site;
 	  if ((donutSite - origin).GetManhattanLength() > R)  // site not visible in Event Window
           {
@@ -124,9 +122,8 @@ namespace MFM
 
     Element_Isolator() : Element<CC>(MFM_UUID_FOR("Isolator", ISOLATOR_VERSION)), 
 			 m_cellRadius(this, "cellRadius", "Cell Radius", "Isolator cell radius spacing", 
-                                      1, R-1, R, 1),
-                         m_deathProb(this, "deathProb", "Odds of dying", "Probability of dying for an Isolator",
-                                     1, 100, 1000, 1) 
+                                      1, R-1, R, 1)
+
     {
       Element<CC>::SetAtomicSymbol("Is");
       Element<CC>::SetName("Isolator");
@@ -220,68 +217,54 @@ namespace MFM
 	      }
             /*******************************************************************/
 
-            // If this Isolator is on the edge of the 'bubble', look at all spaces adjacent to it;
-            // Those that are further in Manhattan distance to the seen Element than this Isolator
-            // are outside of the bubble.  We want Isolator bubbles to repel, so if another Isolator
-            // is seen in one of these edge locations, Isolator swaps the seen Element in the opposite
-            // direction
+            // If this Isolator is on the edge of the 'bubble' (R-1), look at all sites A of at least distance
+            // R to this Isolator; If A is of greater distance than R-1 (further from seen Element than this isolator)
+            // and has a non-empty non-isolator Atom in it, Isolator will try to swap the seen Element
+            // away from itself (and thus away from the other seen element at A).  The distance it swaps 
+            // the Element is at most 2; 1 unit in the X and Y directions.
             s32 length_to_E = manhattanDist(center_point, site);
-            u32 search_dist = R - length_to_E + 3;  // sites that should be outside of this Isolator bubble
-            // below: make GetLastIndex( R ) or GetLastIndex(search_dist) ?
-	    if (length_to_E == R-1)
-	      {  for (u32 i = md.GetFirstIndex(search_dist); i <= md.GetLastIndex(R); ++i) // look at all sites outside of bubble
+            if (length_to_E == R-1)
+	     { 
+               u32 search_dist = R - length_to_E + 1;
+               for (u32 i = md.GetFirstIndex(search_dist); i <= md.GetLastIndex(R); ++i) // look at all sites outside of bubble
 	       {  SPoint adj_site = md.GetPoint(i) + center_point;
                   u32 seen_type = window.GetRelativeAtom(adj_site).GetType();
-		     if (manhattanDist(adj_site, site) > length_to_E)
-		       {
-			  if ( seen_type == Element_Isolator<CC>::THE_INSTANCE.GetType() )
-			   {  s32 xDiff = site.GetX() - adj_site.GetX();
-			      s32 yDiff = site.GetY() - adj_site.GetY();
-                              SPoint away_site;
-                              if (xDiff > 0)   // funky if blocks: only move atom at most 1 site in X and Y
-				away_site.SetX(site.GetX() - 1); 
-                              else if (xDiff < 0)
-                                away_site.SetX(site.GetX() + 1);
-                              else
-                                away_site.SetX(site.GetX());
-                              if (yDiff > 0) 
-				away_site.SetY(site.GetY() - 1);  
-                              else if (yDiff < 0)
-                                away_site.SetY(site.GetY() + 1);
-                              else
-				away_site.SetY(site.GetY());
-                             if (window.IsLiveSite(away_site) && away_site.GetManhattanLength() <= R)
-			       {   window.SwapAtoms(site, away_site);
-				 LOG.Message("Saw other Isolator at (%d, %d)\n", adj_site.GetX(), adj_site.GetY());
-                                 LOG.Message("Distance of away site is %d\n", away_site.GetManhattanLength());
-				 LOG.Message("swap element from (%d, %d) to (%d, %d)\n",
-					     site.GetX(), site.GetY(), away_site.GetX(), away_site.GetY());
-				   break;
-			       }			       }
-			  /* away_site.SetX(site.GetX());  // try swap in just Y
-                             if (window.IsLiveSite(away_site) && away_site.GetManhattanLength() <= R)
-			       {   window.SwapAtoms(site, away_site);
-				 LOG.Message("Saw other Isolator at (%d, %d)\n", adj_site.GetX(), adj_site.GetY());
-                                 LOG.Message("Distance of away site is %d\n", away_site.GetManhattanLength());
-				 LOG.Message("swap element from (%d, %d) to (%d, %d)\n",
-					     site.GetX(), site.GetY(), away_site.GetX(), away_site.GetY());
-				   break;
-			       }
-                             away_site.SetX(xDiff);   // try swap in just X
-                             away_site.SetY(site.GetY());
-                             if (window.IsLiveSite(away_site) && away_site.GetManhattanLength() <= R)
-			       {   window.SwapAtoms(site, away_site);
-				 LOG.Message("Saw other Isolator at (%d, %d)\n", adj_site.GetX(), adj_site.GetY());
-                                 LOG.Message("Distance of away site is %d\n", away_site.GetManhattanLength());
-				 LOG.Message("swap element from (%d, %d) to (%d, %d)\n",
-					     site.GetX(), site.GetY(), away_site.GetX(), away_site.GetY());
-				   break;
-			       }
-			  */
-		       }
+		  if (manhattanDist(adj_site, site) > length_to_E && adj_site != site)
+		  {
+		    // now looking for other non-isolator elements
+		     if ( seen_type != Element_Isolator<CC>::THE_INSTANCE.GetType() 
+                          && seen_type != Element_Empty<CC>::THE_INSTANCE.GetType())
+		     {  
+		        SPoint away_offset, away_site;
+			s32 site_X = site.GetX();
+			s32 site_Y = site.GetY();
+
+			if (site_X < 0)   // make offset in X be one unit away from this Isolator
+			  away_offset.SetX(-1);
+			else if (site_X > 0)
+			  away_offset.SetX(1);
+			else
+			  away_offset.SetX(0);
+         
+			if (site_Y < 0)  // make offset in Y be one unit away from this Isolator
+			  away_offset.SetY(-1); 
+			else if (site_Y > 0)
+			  away_offset.SetY(1);
+			else
+			  away_offset.SetY(0);
+
+			away_site = site + away_offset;
+
+			if (window.IsLiveSite(away_site) && away_site.GetManhattanLength() <= R)
+			  {   window.SwapAtoms(site, away_site);
+			    //LOG.Message("swap element from (%d, %d) to (%d, %d)\n",
+			    //	   site.GetX(), site.GetY(), away_site.GetX(), away_site.GetY());
+			  }
+		     }
+		  }
 	       }
-	      }
-	      
+ 
+	     }
 	    /***********************************************************************/
 
 	  
@@ -289,17 +272,10 @@ namespace MFM
 
        }  // end brace for overall search loop
        
-       // haven't seen anything, die or do random walk
+       // haven't seen anything, die
        if (! element_found)   
        {
-          // Roll the dice and die if unlucky
-          if (window.GetRandom().OneIn(m_deathProb.GetValue()))
-          {  
-             window.SetCenterAtom(Element_Empty<CC>::THE_INSTANCE.GetDefaultAtom());
-          }
-          else      // Didn't die, random walk
-          {  randomWalk(window);
-          }
+          window.SetCenterAtom(Element_Empty<CC>::THE_INSTANCE.GetDefaultAtom());
        }
        /**********************************************/
     }
