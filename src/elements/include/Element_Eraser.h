@@ -55,7 +55,7 @@ namespace MFM
     void randomWalk(EventWindow<CC>& window) const
     {  SPoint wanderPt;
        Random& rand = window.GetRandom();
-       const MDist<R> md = MDist<R>::get();
+       const MDist<R>& md = MDist<R>::get();
        Dir d = (Dir)rand.Create(Dirs::DIR_COUNT); 
        const int wanderDistance = 1;
 
@@ -78,7 +78,7 @@ namespace MFM
 
     Element_Eraser() : Element<CC>(MFM_UUID_FOR("Eraser", ERASER_VERSION)), 
 			 m_eraseRadius(this, "eraseRadius", "Erase Radius", "Eraser effective distance", 
-                                      1, 2, R, 1)
+                                      1, 2, R)
     {
       Element<CC>::SetAtomicSymbol("Er");
       Element<CC>::SetName("Eraser");
@@ -118,7 +118,7 @@ namespace MFM
 
     virtual void Behavior(EventWindow<CC>& window) const
     {  
-       const MDist<R> md = MDist<R>::get();
+       const MDist<R>& md = MDist<R>::get();
 
        // Look in every site of the Event Window within distance m_eraseRadius
        for (u32 idx = md.GetFirstIndex(1); idx <= md.GetLastIndex(m_eraseRadius.GetValue()); ++idx)
@@ -144,8 +144,8 @@ namespace MFM
           /*******************************************************************/
        }
        
-       randomWalk(window);
-
+       //randomWalk(window);
+       this->Diffuse(window);
     }
   
  };

@@ -49,29 +49,6 @@ namespace MFM
   private:
     ElementParameterS32<CC> m_cellRadius;
 
-    // Does a random walk given an EventWindow.  
-    // Taken straight from AbstractElement_Wanderer.h
-    void randomWalk(EventWindow<CC>& window) const
-    {  SPoint wanderPt;
-       Random& rand = window.GetRandom();
-       const MDist<R> md = MDist<R>::get();
-       Dir d = (Dir)rand.Create(Dirs::DIR_COUNT); 
-       const int wanderDistance = 1;
-
-       Dirs::FillDir(wanderPt, d);
-
-       wanderPt *= Dirs::IsCorner(d) ? (wanderDistance / 2) : wanderDistance;
-
-       if(window.IsLiveSite(wanderPt))
-	 {
-	   if(window.GetRelativeAtom(wanderPt).GetType() ==
-	      Element_Empty<CC>::THE_INSTANCE.GetType())
-	   {
-	     window.SwapAtoms(wanderPt, SPoint(0, 0));
-	   }
-	 }
-    
-    }
     s32 manhattanDist(const SPoint& p1, const SPoint& p2) const
     {  s32 x1 = p1.GetX();
        s32 x2 = p2.GetX();
@@ -88,7 +65,7 @@ namespace MFM
     s32 nearest_elem_dist(EventWindow<CC>& window, const SPoint& origin, 
                           const SPoint& site, u32 ignore_type) const
     {  	    
-       const MDist<R> md = MDist<R>::get();
+       const MDist<R>& md = MDist<R>::get();
        s32 nearest_dist = 0;
 
        for (u32 i = md.GetFirstIndex(1); i <= md.GetLastIndex(R); ++i)
@@ -131,7 +108,7 @@ namespace MFM
 
     Element_Isolator() : Element<CC>(MFM_UUID_FOR("Isolator", ISOLATOR_VERSION)), 
 			 m_cellRadius(this, "cellRadius", "Cell Radius", "Isolator cell radius spacing", 
-                                      1, R-1, R, 1)
+                                      1, R-1, R)
 
     {
       Element<CC>::SetAtomicSymbol("Is");
@@ -175,7 +152,7 @@ namespace MFM
     virtual void Behavior(EventWindow<CC>& window) const
     {  
        T self = window.GetCenterAtom();
-       const MDist<R> md = MDist<R>::get();
+       const MDist<R>& md = MDist<R>::get();
        const SPoint center_point = md.GetPoint(md.GetFirstIndex(0));
        bool element_found = false;
 
