@@ -114,6 +114,15 @@ namespace MFM
        return nearest_dist;
     }
 
+    s32 unit_reduce(s32 num) const
+    { if (num < 0) 
+	 return -1;
+      else if (num > 0)
+	 return 1;
+      
+      return 0;  
+    }  
+
   public:
     static Element_Isolator THE_INSTANCE;
     static const u32 TYPE() {
@@ -190,23 +199,23 @@ namespace MFM
              type != Element_Empty<CC>::THE_INSTANCE.GetType())
           {
             element_found = true;
-
             // Look at all sites within R of the found Element.  Any sites less than range (Cell Radius) away
             // should be removed of Isolators, and sites >= range in manhattan distance should become Isolator
             u32 range =  (u32) m_cellRadius.GetValue();
 	    for (u32 i = md.GetFirstIndex(1); i <= md.GetLastIndex(R); ++i)
 	      {  const SPoint baseSite = md.GetPoint(i);
                  const SPoint donutSite = baseSite + site;
-		 if (donutSite.GetManhattanLength() > R)
-                 {
+		 if (manhattanDist(center_point, donutSite) > R || !window.IsLiveSite(donutSite))
+                 {  
                     continue;
                  }
 		 type = window.GetRelativeAtom(donutSite).GetType();
 
-                 if (baseSite.GetManhattanLength() < range)
-		 { if (type == Element_Isolator<CC>::THE_INSTANCE.GetType())
+                 if (baseSite.GetManhattanLength() < range)  
+		 { 	    
+                   if (type == Element_Isolator<CC>::THE_INSTANCE.GetType())
 		   {  window.SetRelativeAtom(donutSite, Element_Empty<CC>::THE_INSTANCE.GetDefaultAtom());
-		   }
+                   }
 		 }
                  else 
 		 { if (type == Element_Empty<CC>::THE_INSTANCE.GetType())
@@ -223,42 +232,48 @@ namespace MFM
             // away from itself (and thus away from the other seen element at A).  The distance it swaps 
             // the Element is at most 2; 1 unit in the X and Y directions.
             s32 length_to_E = manhattanDist(center_point, site);
-            if (length_to_E == R-1)
+            if (length_to_E == R-1)  
 	     { 
-               u32 search_dist = R - length_to_E + 1;
-               for (u32 i = md.GetFirstIndex(search_dist); i <= md.GetLastIndex(R); ++i) // look at all sites outside of bubble
-	       {  SPoint adj_site = md.GetPoint(i) + center_point;
+               for (u32 i = md.GetFirstIndex(1); i <= md.GetLastIndex(R); ++i) 
+	       {  SPoint adj_site = md.GetPoint(i);
                   u32 seen_type = window.GetRelativeAtom(adj_site).GetType();
-		  if (manhattanDist(adj_site, site) > length_to_E && adj_site != site)
+		  if (manhattanDist(adj_site, site) > length_to_E)
 		  {
 		    // now looking for other non-isolator elements
 		     if ( seen_type != Element_Isolator<CC>::THE_INSTANCE.GetType() 
                           && seen_type != Element_Empty<CC>::THE_INSTANCE.GetType())
 		     {  
 		        SPoint away_offset, away_site;
-			s32 site_X = site.GetX();
-			s32 site_Y = site.GetY();
+			s32 site_x = site.GetX();
+			s32 site_y = site.GetY();
 
-			if (site_X < 0)   // make offset in X be one unit away from this Isolator
-			  away_offset.SetX(-1);
-			else if (site_X > 0)
-			  away_offset.SetX(1);
-			else
-			  away_offset.SetX(0);
-         
-			if (site_Y < 0)  // make offset in Y be one unit away from this Isolator
-			  away_offset.SetY(-1); 
-			else if (site_Y > 0)
-			  away_offset.SetY(1);
-			else
-			  away_offset.SetY(0);
+                        // If either x or y offsets are zero, increase the non-zero one
+			// If both x and y offsets are non-zero, flip coin; 
+                        // either move Element in X or Y one unit
+
+			if (site_x != 0 && site_y == 0)
+			  {  away_offset.SetX(unit_reduce(site_x));
+			     away_offset.SetY(0);
+			  }
+			else if (site_y != 0 && site_x == 0)
+			  {  away_offset.SetX(0);
+                             away_offset.SetY(unit_reduce(site_y));
+			  }
+			else   // both X and Y offsets are non-zero; randomly increase the magnitude of one of them
+			  {  if (window.GetRandom().OneIn(2))
+			      {  away_offset.SetX(unit_reduce(site_x));
+				 away_offset.SetY(0);
+			      }
+			     else
+			      {  away_offset.SetX(0);
+				 away_offset.SetY(unit_reduce(site_y));
+			      } 
+			  } 
 
 			away_site = site + away_offset;
 
-			if (window.IsLiveSite(away_site) && away_site.GetManhattanLength() <= R)
+			if (window.IsLiveSite(away_site))
 			  {   window.SwapAtoms(site, away_site);
-			    //LOG.Message("swap element from (%d, %d) to (%d, %d)\n",
-			    //	   site.GetX(), site.GetY(), away_site.GetX(), away_site.GetY());
 			  }
 		     }
 		  }
