@@ -92,7 +92,7 @@ namespace MFM
 
     virtual u32 DefaultPhysicsColor() const
     {
-      return 0x58584c;  // gray
+      return 0xff3300;  // orange
     }
 
     virtual u32 DefaultLowlightColor() const
