@@ -134,9 +134,9 @@ namespace MFM
           u32 type = other.GetType();
           /********************************************************/
         
-          // If a non-Empty and non-Eraser Element is found, destroy it (set to Empty)
-          if(type != Element_Eraser<CC>::THE_INSTANCE.GetType() 
-                             && 
+          // If a non-Empty Element is found, destroy it
+          if(/*type != Element_Eraser<CC>::THE_INSTANCE.GetType() 
+	       && */
              type != Element_Empty<CC>::THE_INSTANCE.GetType())
           {
               window.SetRelativeAtom(site, Element_Empty<CC>::THE_INSTANCE.GetDefaultAtom());             
