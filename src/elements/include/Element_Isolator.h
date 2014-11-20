@@ -209,8 +209,8 @@ namespace MFM
             // away from itself (and thus away from the other seen element at A).  The distance it swaps 
             // the Element is at most 2; 1 unit in the X and Y directions.
             s32 length_to_E = manhattanDist(center_point, site);
-            if (length_to_E == R-1)  
-	     { 
+            //if (length_to_E == R-1)  
+	    // { 
                for (u32 i = md.GetFirstIndex(1); i <= md.GetLastIndex(R); ++i) 
 	       {  SPoint adj_site = md.GetPoint(i);
                   u32 seen_type = window.GetRelativeAtom(adj_site).GetType();
@@ -223,6 +223,7 @@ namespace MFM
 		        SPoint away_offset, away_site;
 			s32 site_x = site.GetX();
 			s32 site_y = site.GetY();
+			LOG.Message("swapping: dist = %d\n", length_to_E);
 
                         // If either x or y offsets are zero, increase the non-zero one
 			// If both x and y offsets are non-zero, flip coin; 
@@ -256,7 +257,7 @@ namespace MFM
 		  }
 	       }
  
-	     }
+	       //}
 	    /***********************************************************************/
 
 	  
