@@ -223,7 +223,6 @@ namespace MFM
 		        SPoint away_offset, away_site;
 			s32 site_x = site.GetX();
 			s32 site_y = site.GetY();
-			LOG.Message("swapping: dist = %d\n", length_to_E);
 
                         // If either x or y offsets are zero, increase the non-zero one
 			// If both x and y offsets are non-zero, flip coin; 
